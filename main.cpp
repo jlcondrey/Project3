@@ -38,7 +38,7 @@ private:
             return code;
         }
 
-        void addAirline(std::string airlineName, int minutesDelayed) {
+        void addAirline(std::string airlineName) {
             // Check if the airline already exists in the map
             auto it = airlines.find(airlineName);
             if (it == airlines.end()) {
@@ -48,7 +48,6 @@ private:
             }
 
             // Update the total minutes delayed for the airline
-            it->second.addMinutesDelayed(minutesDelayed);
         }
 
         const std::map<std::string, Airline>& getAirlines() const {
@@ -70,8 +69,8 @@ public:
         root = insertRecursive(root, airportCode);
     }
 
-    void addAirlineToAirport(std::string airportCode, std::string airlineName, int minutesDelayed) {
-        addAirlineToAirportRecursive(root, airportCode, airlineName, minutesDelayed);
+    void addAirlineToAirport(std::string airportCode, std::string airlineName) {
+        addAirlineToAirportRecursive(root, airportCode, airlineName);
     }
 
     void printInOrder() const {
@@ -96,14 +95,14 @@ private:
         return currentNode;
     }
 
-    void addAirlineToAirportRecursive(std::shared_ptr<AirportNode> currentNode, std::string airportCode, std::string airlineName, int minutesDelayed) {
+    void addAirlineToAirportRecursive(std::shared_ptr<AirportNode> currentNode, std::string airportCode, std::string airlineName) {
         if (currentNode != nullptr) {
             if (currentNode->getCode() == airportCode) {
-                currentNode->addAirline(airlineName, minutesDelayed);
+                currentNode->addAirline(airlineName);
             } else if (airportCode < currentNode->getCode()) {
-                addAirlineToAirportRecursive(currentNode->left, airportCode, airlineName, minutesDelayed);
+                addAirlineToAirportRecursive(currentNode->left, airportCode, airlineName);
             } else {
-                addAirlineToAirportRecursive(currentNode->right, airportCode, airlineName, minutesDelayed);
+                addAirlineToAirportRecursive(currentNode->right, airportCode, airlineName);
             }
         }
     }
@@ -112,8 +111,8 @@ private:
         if (currentNode != nullptr) {
             printInOrderRecursive(currentNode->left);
             std::cout << "Airport: " << currentNode->getCode() << std::endl << " Airlines: ";
-            for (const auto& pair : currentNode->getAirlines()) {
-                std::cout << pair.first << " (Minutes Delayed: " << pair.second.getTotalMinutesDelayed() << "), ";
+            for (const auto& airlinePair : currentNode->getAirlines()) {
+                std::cout << airlinePair.first << ", ";
             }
             std::cout << std::endl;
             printInOrderRecursive(currentNode->right);
@@ -131,56 +130,40 @@ int main() {
         return 1;
     }
 
+    int minutesdelayed;
+
     std::string line;
     std::getline(inputFile, line); // Skip the header line
 
+    std::vector<std::string> elements;
+    std::vector<int> late;
+
     while (std::getline(inputFile, line)) {
         std::istringstream iss(line);
-        std::string airportCode, carriers, lateAircraftDelays;
+        std::string airportCode, carriers;
 
         // Read the columns from the CSV line
-        if (std::getline(iss, airportCode, ',')) {
-            std::getline(iss, carriers, ',');
-            std::getline(iss, lateAircraftDelays, ',');
-
-            // Trim leading and trailing spaces from the airline names
-            carriers.erase(carriers.begin(), std::find_if(carriers.begin(), carriers.end(), [](unsigned char ch) {
-                return !std::isspace(ch);
-            }));
-            carriers.erase(std::find_if(carriers.rbegin(), carriers.rend(), [](unsigned char ch) {
-                return !std::isspace(ch);
-            }).base(), carriers.end());
-
-            airportBST.insertAirport(airportCode);
-
-            std::istringstream airlinesStream(carriers);
-            std::string airlineName;
-            while (std::getline(airlinesStream, airlineName, ',')) {
-                // Trim leading and trailing spaces from the airline name
-                airlineName.erase(airlineName.begin(), std::find_if(airlineName.begin(), airlineName.end(), [](unsigned char ch) {
-                    return !std::isspace(ch);
-                }));
-                airlineName.erase(std::find_if(airlineName.rbegin(), airlineName.rend(), [](unsigned char ch) {
-                    return !std::isspace(ch);
-                }).base(), airlineName.end());
-
-                if (!airlineName.empty()) {
-                    int minutesDelayed = 0; // Default value for invalid input
-                    try {
-                        // Convert to integer with error handling
-                        minutesDelayed = std::stoi(lateAircraftDelays);
-                    } catch (const std::invalid_argument&) {
-                        // Handle invalid input (e.g., non-numeric values)
-                        std::cerr << "Invalid input for minutes delayed: " << lateAircraftDelays << std::endl;
-                    }
-
-                    airportBST.addAirlineToAirport(airportCode, airlineName, minutesDelayed);
+        while (std::getline(iss, airportCode, ',')) {
+            while (std::getline(iss, carriers, ',')) {
+                if (std::all_of(carriers.begin(), carriers.end(), ::isdigit)) {
+                    minutesdelayed = std::stoi(carriers);
+                    late.push_back(minutesdelayed);
+                    break;
+                } else {
+                    elements.push_back(carriers);
                 }
             }
-        } else {
-            std::cerr << "Error reading data from the CSV file." << std::endl;
-            return 1;
+            break;
         }
+
+        airportBST.insertAirport(airportCode);
+        for (size_t i = 0; i < elements.size(); ++i) {
+            airportBST.addAirlineToAirport(airportCode, elements[i]);
+        }
+
+        // Clear the vectors for the next iteration
+        elements.clear();
+        late.clear();
     }
 
     // Print all airports and their airlines
